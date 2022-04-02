@@ -1,0 +1,434 @@
+---
+title: "DABI_7_CW2"
+author: "Team 7"
+date: "15/12/2021"
+output: ioslides_presentation
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(here)
+library(readxl)
+
+library(ggplot2)
+library(lubridate)
+
+library(stats19)
+library(mapview)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+accidents_2019 <- get_stats19(year = 2019, type = "accident")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+casualities_2019 = get_stats19(year = 2019, type = "casualty")
+casualities_2019
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+  casualities_2019 <- casualities_2019 %>%
+    group_by(age_band_of_casualty) %>%
+    mutate(no_of_casualities = n()) %>%
+    mutate(pecrcentage_casualities = no_of_casualities/nrow(casualities_2019))
+casualities_2019
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+age_band_wise_casualities <- casualities_2019 %>%
+    group_by(age_band_of_casualty) %>%
+    count(no_of_casualities, percentage  = pecrcentage_casualities)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+  unique(accidents_2019$weather_conditions)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+unique(accidents_2019$speed_limit)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+accidents_2019_weather_conditions <- accidents_2019 %>%
+  group_by(weather_conditions) %>%
+  mutate(no_of_weather_conditions = n()) %>%
+  mutate(pecrcentage_casualities = no_of_weather_conditions/nrow(accidents_2019))
+
+
+accidents_2019_speed_conditions <- accidents_2019 %>%
+  group_by(speed_limit) %>%
+  mutate(no_of_speed_limits = n()) %>%
+  mutate(pecrcentage_speed_limits = no_of_speed_limits/nrow(accidents_2019))
+
+accidents_2019_districts <- accidents_2019 %>%
+  group_by(local_authority_district) %>%
+  mutate(districts_with_max_accidents = n()) %>%
+  mutate(percentage_dist_max_accidents = 100*(districts_with_max_accidents/nrow(accidents_2019)))
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+  accidents_2019 <- accidents_2019 %>%
+    mutate(month = month(date)) %>%
+    arrange(desc(number_of_casualties)) 
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+  accidents_by_month <- accidents_2019 %>%
+    filter(number_of_casualties > 4) %>%
+    arrange(desc(number_of_casualties))
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+accidents_sf = format_sf(accidents_by_month)
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+mapviewOptions(basemaps = c("OpenStreetMap.DE"))
+
+mapview(accidents_sf, xcol = "longitude", ycol = "latitude", zcol = "accident_severity", cex = "number_of_casualties", crs = 4269, grid = FALSE)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+  accidents_2019_district_max_accidents <- accidents_2019_districts[,
+                 c(15,38,39)]
+
+  accidents_2019_district_max_accidents <- accidents_2019_district_max_accidents %>% distinct()
+
+  accidents_2019_district_max_accidents <- accidents_2019_district_max_accidents %>% arrange(desc(districts_with_max_accidents))
+
+  colnames(accidents_2019_district_max_accidents) <- c("District", "Accidents", "Percentage")
+
+  knitr::kable(head(accidents_2019_district_max_accidents, n=5))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+  accidents_2019_max_weather_conditions <- accidents_2019_weather_conditions[,
+                 c(29,38,39)]
+  accidents_2019_max_weather_conditions <- accidents_2019_max_weather_conditions %>% distinct()
+  
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(accidents_2019_max_weather_conditions) +
+  geom_col( aes(x = "", y = pecrcentage_casualities*100, 
+                fill = weather_conditions)) +
+  coord_polar(theta = "y") +
+  ggtitle("Weather Conditions at the Site of Accident") +
+  xlab("Weather Conditions") + ylab("Percentage share of each weather condition") + scale_x_discrete(labels = function(x) str_wrap(x, width = 8)) 
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+  accidents_2019_max_speed_limits <- accidents_2019_speed_conditions[,
+                 c(21,38,39)]
+  accidents_2019_max_speed_limits <- accidents_2019_max_speed_limits %>% distinct() %>%
+    filter(speed_limit != -1)
+  
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(accidents_2019_max_speed_limits) +
+  geom_col(aes(x = "", y = pecrcentage_speed_limits*100, fill = speed_limit)) +
+  coord_polar(theta = "y") +
+  ggtitle("Speed Limits at the Site of Accident") +
+  xlab("Speed Limits") + ylab("Percentage share of each speed limit") +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 8)) 
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+accidents_2019_casuality_type <- casualities_2019 %>%
+  group_by(casualty_type) %>%
+  mutate(casuality_type_in_accidents = n()) %>%
+  mutate(percentage_casuality_type = 100*(casuality_type_in_accidents/nrow(casualities_2019)))
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+  accidents_2019_casuality_type_plot <- accidents_2019_casuality_type[,
+                 c(16,19,20)]
+
+  accidents_2019_casuality_type_plot <- accidents_2019_casuality_type_plot %>% distinct()
+
+  colnames(accidents_2019_casuality_type_plot) <- c("Casualty Type", "No of Casualities", "Percentage")
+  
+  knitr::kable(head(accidents_2019_casuality_type_plot, n =5))
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+  driving_licence_type <- read_excel("~/Downloads/driving-licence-data-nov-2019.xlsx", 
+  sheet = "DRL0101-December 2019", range = c("A20:G113"), col_names = TRUE)
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+  driving_licence_type <- driving_licence_type %>%
+    mutate(age_band = case_when(
+    Age <= 15 ~ "0 - 15",
+    Age > 15 & Age < 21 ~ "16 - 20",
+    Age > 20 & Age < 26 ~ "21 - 25",
+    Age > 25 & Age < 36 ~ "26 - 35",
+    Age > 35 & Age < 46 ~ "36 - 45",
+    Age > 45 & Age < 56 ~ "46 - 55",
+    Age > 55 & Age < 66 ~ "56 - 65",
+    Age > 65 & Age < 76 ~ "66 - 75",
+    Age >= 76 ~ "above 75"
+  ))
+  
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+    driving_licence_type_prov_b1 <- driving_licence_type %>%
+    filter(age_band == "0 - 15") %>%
+    summarise(prov_b1 = sum(`Provisional - Total`), 
+              full_b1 = sum(`Full - Total`),
+              percent_prov_b1 
+              = prov_b1/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b1 
+              = full_b1/sum(driving_licence_type$`Full - Total`))  
+
+    driving_licence_type_prov_b2 <- driving_licence_type %>%
+    filter(age_band == "16 - 20") %>%
+    summarise(prov_b2 = sum(`Provisional - Total`), 
+              full_b2 = sum(`Full - Total`),
+              percent_prov_b2 
+              = prov_b2/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b2 
+              = full_b2/sum(driving_licence_type$`Full - Total`))  
+
+ 
+    driving_licence_type_prov_b3 <- driving_licence_type %>%
+    filter(age_band == "21 - 25") %>%
+    summarise(prov_b3 = sum(`Provisional - Total`), 
+              full_b3 = sum(`Full - Total`),
+              percent_prov_b3 
+              = prov_b3/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b3 
+              = full_b3/sum(driving_licence_type$`Full - Total`)) 
+
+  
+    driving_licence_type_prov_b4 <- driving_licence_type %>%
+    filter(age_band == "26 - 35") %>%
+    summarise(prov_b4 = sum(`Provisional - Total`), 
+              full_b4 = sum(`Full - Total`),
+              percent_prov_b4 
+              = prov_b4/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b4 
+              = full_b4/sum(driving_licence_type$`Full - Total`))  
+
+ 
+    driving_licence_type_prov_b5 <- driving_licence_type %>%
+    filter(age_band == "36 - 45") %>%
+    summarise(prov_b5 = sum(`Provisional - Total`), 
+              full_b5 = sum(`Full - Total`),
+              percent_prov_b5 
+              = prov_b5/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b5
+              = full_b5/sum(driving_licence_type$`Full - Total`))  
+
+
+    driving_licence_type_prov_b6 <- driving_licence_type %>%
+    filter(age_band == "46 - 55") %>%
+    summarise(prov_b6 = sum(`Provisional - Total`), 
+              full_b6 = sum(`Full - Total`),
+              percent_prov_b6 
+              = prov_b6/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b6 
+              = full_b6/sum(driving_licence_type$`Full - Total`)) 
+
+ 
+    driving_licence_type_prov_b7 <- driving_licence_type %>%
+    filter(age_band == "56 - 65") %>%
+    summarise(prov_b7 = sum(`Provisional - Total`), 
+              full_b7 = sum(`Full - Total`),
+              percent_prov_b7 
+              = prov_b7/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b7 
+              = full_b7/sum(driving_licence_type$`Full - Total`)) 
+
+
+    driving_licence_type_prov_b8 <- driving_licence_type %>%
+    filter(age_band == "66 - 75") %>%
+    summarise(prov_b8 = sum(`Provisional - Total`), 
+              full_b8 = sum(`Full - Total`),
+              percent_prov_b8 
+              = prov_b8/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b8 
+              = full_b8/sum(driving_licence_type$`Full - Total`)) 
+            
+           
+    driving_licence_type_prov_b9 <- driving_licence_type %>%
+    filter(age_band == "above 75") %>%
+    summarise(prov_b9 = sum(`Provisional - Total`), 
+              full_b9 = sum(`Full - Total`),
+              percent_prov_b9 
+              = prov_b9/sum(driving_licence_type$`Provisional - Total`),
+              percent_full_b9 
+              = full_b9/sum(driving_licence_type$`Full - Total`)) 
+
+
+
+  driving_licence_type <- driving_licence_type %>%
+    mutate(provisional_holders = case_when(
+    age_band == "0 - 15" ~ driving_licence_type_prov_b1$prov_b1,
+    age_band == "16 - 20"~ driving_licence_type_prov_b2$prov_b2,
+    age_band == "21 - 25"~ driving_licence_type_prov_b3$prov_b3,
+    age_band == "26 - 35"~ driving_licence_type_prov_b4$prov_b4,
+    age_band == "36 - 45"~ driving_licence_type_prov_b5$prov_b5,
+    age_band == "46 - 55"~ driving_licence_type_prov_b6$prov_b6,
+    age_band == "56 - 65"~ driving_licence_type_prov_b7$prov_b7,
+    age_band == "66 - 75"~ driving_licence_type_prov_b8$prov_b8,
+    age_band == "above 75"~ driving_licence_type_prov_b9$prov_b9,
+  ),
+  full_holders = case_when(
+    age_band == "0 - 15" ~ driving_licence_type_prov_b1$full_b1,
+    age_band == "16 - 20"~ driving_licence_type_prov_b2$full_b2,
+    age_band == "21 - 25"~ driving_licence_type_prov_b3$full_b3,
+    age_band == "26 - 35"~ driving_licence_type_prov_b4$full_b4,
+    age_band == "36 - 45"~ driving_licence_type_prov_b5$full_b5,
+    age_band == "46 - 55"~ driving_licence_type_prov_b6$full_b6,
+    age_band == "56 - 65"~ driving_licence_type_prov_b7$full_b7,
+    age_band == "66 - 75"~ driving_licence_type_prov_b8$full_b8,
+    age_band == "above 75"~ driving_licence_type_prov_b9$full_b9,
+  ),
+  percent_provisional = case_when(
+    age_band == "0 - 15" ~ driving_licence_type_prov_b1$percent_prov_b1,
+    age_band == "16 - 20"~ driving_licence_type_prov_b2$percent_prov_b2,
+    age_band == "21 - 25"~ driving_licence_type_prov_b3$percent_prov_b3,
+    age_band == "26 - 35"~ driving_licence_type_prov_b4$percent_prov_b4,
+    age_band == "36 - 45"~ driving_licence_type_prov_b5$percent_prov_b5,
+    age_band == "46 - 55"~ driving_licence_type_prov_b6$percent_prov_b6,
+    age_band == "56 - 65"~ driving_licence_type_prov_b7$percent_prov_b7,
+    age_band == "66 - 75"~ driving_licence_type_prov_b8$percent_prov_b8,
+    age_band == "above 75"~ driving_licence_type_prov_b9$percent_prov_b9,
+  ),
+  percent_full = case_when(
+    age_band == "0 - 15" ~ driving_licence_type_prov_b1$percent_full_b1,
+    age_band == "16 - 20"~ driving_licence_type_prov_b2$percent_full_b2,
+    age_band == "21 - 25"~ driving_licence_type_prov_b3$percent_full_b3,
+    age_band == "26 - 35"~ driving_licence_type_prov_b4$percent_full_b4,
+    age_band == "36 - 45"~ driving_licence_type_prov_b5$percent_full_b5,
+    age_band == "46 - 55"~ driving_licence_type_prov_b6$percent_full_b6,
+    age_band == "56 - 65"~ driving_licence_type_prov_b7$percent_full_b7,
+    age_band == "66 - 75"~ driving_licence_type_prov_b8$percent_full_b8,
+    age_band == "above 75"~ driving_licence_type_prov_b9$percent_full_b9,
+  ))
+  
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+  provisional_data <- driving_licence_type[,
+                 c(8,11)]
+
+  provisional_data <- provisional_data %>%
+      distinct() %>%
+      mutate(licence_type = "provisional licence")
+
+  colnames(provisional_data) <- c("age_band", "percent", "type")
+  
+  provisional_data <- provisional_data[c(2,3,4,5,6,7,8),] 
+  
+  
+  full_licence_data <- driving_licence_type[,
+                 c(8,12)]
+  
+  full_licence_data <- full_licence_data %>%
+      distinct() %>%
+      mutate(licence_type = "full licence")
+  
+  colnames(full_licence_data) <- c("age_band", "percent", "type")
+
+  full_licence_data <- full_licence_data[c(2,3,4,5,6,7,8),]
+  
+  
+  licence_data <- rbind(full_licence_data, 
+                            provisional_data)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+casualties_data <- age_band_wise_casualities[c(3,4,5,6,7,8,10),c(1,3)] 
+
+casualties_data <- casualties_data %>%
+  mutate(type = "casualities")
+
+colnames(casualties_data) <- c("age_band", "percent", "type")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+casualities_by_dl <- rbind(licence_data, casualties_data)
+
+casualities_by_dl <- casualities_by_dl %>%
+   mutate(age_band_type = paste(age_band, type))
+```
+
+
+ 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+  ggplot(casualities_by_dl) + 
+  geom_bar(aes(age_band, y=percent*100, fill=type), stat='identity', position='dodge')+
+  ggtitle("Age Group representation in Casualities and DL Type in 2019") +
+  xlab("Age Groups") + ylab("Percentage share of age group") +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 8)) 
+```
+
+
+
